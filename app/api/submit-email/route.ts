@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServiceClient } from '@/lib/supabase';
-import { resend } from '@/lib/resend';
+import { resend, FROM_EMAIL } from '@/lib/resend';
 
 const emailSchema = z.object({
   email: z.string().email(),
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     // Send confirmation email
     try {
       await resend.emails.send({
-        from: 'noreply@email.mruud.com',
+        from: FROM_EMAIL,
         to: email,
         subject: 'Subscription Confirmation',
         html: `
