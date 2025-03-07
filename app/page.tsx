@@ -1,23 +1,32 @@
-import EmailForm from '@/components/EmailForm';
+import WaitlistForm from '@/components/WaitlistForm';
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="max-w-2xl mx-auto text-center">
-        <h1 className="text-4xl font-bold mb-6">Email Capture System</h1>
-        <p className="text-xl mb-8">
-          A centralized email collection service for all your projects.
-        </p>
+    <div className="min-h-screen bg-black text-white">
+      <div className="max-w-7xl mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-6">MruudMail Dashboard</h1>
         
-        <div className="mb-12">
-          <h2 className="text-2xl font-semibold mb-4">Example Form</h2>
-          <EmailForm 
-            projectId="demo-project" 
-            buttonText="Join the waitlist"
-            successMessage="You've been added to our waitlist!"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link 
+            href="/marketing" 
+            className="block p-6 bg-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors"
+          >
+            <h2 className="text-xl font-bold mb-2">Marketing Emails</h2>
+            <p className="text-zinc-400">Compose and send marketing emails to your subscribers</p>
+          </Link>
+          
+          {/* Add more dashboard cards here as needed */}
+        </div>
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="flex justify-center mb-12">
+            <WaitlistForm 
+              projectId="indie-portfolio" 
+              showHeader={true}
+            />
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
