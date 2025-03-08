@@ -13,6 +13,22 @@ if (!RESEND_API_KEY || !FROM_EMAIL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KE
   throw new Error('Missing required environment variables');
 }
 
+// Validate FROM_EMAIL format
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+if (!emailRegex.test(FROM_EMAIL)) {
+  console.error(`Invalid FROM_EMAIL format: ${FROM_EMAIL}`);
+  throw new Error('Invalid FROM_EMAIL format');
+}
+
+// Log environment variables presence (without exposing values)
+console.log('Environment variables present:', {
+  hasResendKey: !!RESEND_API_KEY,
+  hasFromEmail: !!FROM_EMAIL,
+  fromEmailFormat: emailRegex.test(FROM_EMAIL),
+  hasSupabaseUrl: !!SUPABASE_URL,
+  hasServiceKey: !!SUPABASE_SERVICE_ROLE_KEY
+});
+
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -41,26 +57,36 @@ const corsHeaders = {
 
 // Function to send email using Resend API
 async function sendEmail(to: string, subject: string, html: string) {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html,
-    }),
-  });
+  console.log(`Attempting to send email to: ${to} with subject: ${subject}`);
+  
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to,
+        subject,
+        html,
+      }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to send email');
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      console.error('Resend API error:', responseData);
+      throw new Error(responseData.message || 'Failed to send email');
+    }
+    
+    console.log('Email sent successfully:', responseData);
+    return responseData;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
   }
-
-  return response.json();
 }
 
 // Define project configuration type
@@ -90,8 +116,10 @@ async function getProjectConfig(projectId: string): Promise<ProjectConfig> {
     .eq('project_id', projectId)
     .single();
 
-  if (error) throw new Error(`Failed to get project config: ${error.message}`);
-  if (!data) throw new Error(`Project ${projectId} not found`);
+  if (error) {
+    console.error('Error fetching project config:', error);
+    throw new Error(`Failed to get project configuration: ${error.message}`);
+  }
 
   return data as ProjectConfig;
 }
@@ -140,14 +168,14 @@ async function generateEmailContent(
                   </ul>
                 </div>
 
-                ${config.welcome_message ? `
-                <!-- Welcome Message -->
-                <div style="background-color: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-                  <p style="font-size: 15px; color: #2e7d32; margin: 0;">
-                    ${config.welcome_message}
-                  </p>
-                </div>
-                ` : ''}
+              ${config.welcome_message ? `
+              <!-- Welcome Message -->
+              <div style="background-color: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+                <p style="font-size: 15px; color: #2e7d32; margin: 0;">
+                  ${config.welcome_message}
+                </p>
+              </div>
+              ` : ''}
 
                 <!-- What's Next Section -->
                 <div style="margin-top: 32px;">
@@ -271,34 +299,34 @@ async function generateEmailContent(
             Thanks for joining the waitlist for ${name}...
           </div>
 
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #fafafa; padding: 40px 0;">
-            <div style="max-width: 600px; margin: 0 auto;">
-              <!-- Logo Section -->
-              <div style="text-align: center; margin-bottom: 20px;">
-                <div style="font-size: 24px; font-weight: bold; color: #000000; margin: 0;">✨ ${name}</div>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #fafafa; padding: 40px 0;">
+          <div style="max-width: 600px; margin: 0 auto;">
+            <!-- Logo Section -->
+            <div style="text-align: center; margin-bottom: 20px;">
+              <div style="font-size: 24px; font-weight: bold; color: #000000; margin: 0;">✨ ${name}</div>
+            </div>
+
+            <!-- Main Content -->
+            <div style="background-color: #ffffff; padding: 40px; border-radius: 12px; border: 1px solid #eaeaea;">
+              <h1 style="font-size: 24px; color: #333; margin: 0 0 20px;">You're on the waitlist, ${firstName}!</h1>
+              <p style="font-size: 16px; line-height: 24px; color: #4a5568; margin: 0 0 20px;">
+                Thanks for joining the waitlist for ${name}.
+              </p>
+              
+              ${description ? `
+              <p style="font-size: 16px; line-height: 24px; color: #4a5568; margin: 0 0 20px;">
+                ${description}
+              </p>
+              ` : ''}
+
+              ${config.welcome_message ? `
+              <!-- Welcome Message -->
+              <div style="background-color: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+                <p style="font-size: 15px; color: #2e7d32; margin: 0;">
+                  ${config.welcome_message}
+                </p>
               </div>
-
-              <!-- Main Content -->
-              <div style="background-color: #ffffff; padding: 40px; border-radius: 12px; border: 1px solid #eaeaea;">
-                <h1 style="font-size: 24px; color: #333; margin: 0 0 20px;">You're on the waitlist, ${firstName}!</h1>
-                <p style="font-size: 16px; line-height: 24px; color: #4a5568; margin: 0 0 20px;">
-                  Thanks for joining the waitlist for ${name}.
-                </p>
-                
-                ${description ? `
-                <p style="font-size: 16px; line-height: 24px; color: #4a5568; margin: 0 0 20px;">
-                  ${description}
-                </p>
-                ` : ''}
-
-                ${config.welcome_message ? `
-                <!-- Welcome Message -->
-                <div style="background-color: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-                  <p style="font-size: 15px; color: #2e7d32; margin: 0;">
-                    ${config.welcome_message}
-                  </p>
-                </div>
-                ` : ''}
+              ` : ''}
 
                 <!-- Waitlist Info -->
                 <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 24px 0;">
@@ -307,15 +335,15 @@ async function generateEmailContent(
                   </p>
                 </div>
 
-                <!-- Signature -->
-                <div style="margin-top: 32px;">
-                  <p style="font-size: 15px; line-height: 1.6; color: #4a5568;">
-                    Cheers,<br>
-                    <strong>Marcus Ruud</strong><br>
-                    Maker of <a href="https://mruud.com" style="color: #0366d6; text-decoration: none;">Mruud.com</a>
-                  </p>
-                </div>
+              <!-- Signature -->
+              <div style="margin-top: 32px;">
+                <p style="font-size: 15px; line-height: 1.6; color: #4a5568;">
+                  Cheers,<br>
+                  <strong>Marcus Ruud</strong><br>
+                  Maker of <a href="https://mruud.com" style="color: #0366d6; text-decoration: none;">Mruud.com</a>
+                </p>
               </div>
+            </div>
 
               <!-- GDPR Footer -->
               <div style="margin-top: 32px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; font-size: 12px; color: #666;">
@@ -335,29 +363,33 @@ async function generateEmailContent(
   }
 }
 
+// Main handler function
 serve(async (req: Request) => {
-  // Handle CORS preflight requests
+  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: corsHeaders
-    });
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Log request details for debugging
+  console.log('Request method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  
+  // Get client IP for rate limiting
+  const clientIP = req.headers.get('cf-connecting-ip') || 
+                   req.headers.get('x-forwarded-for')?.split(',')[0] || 
+                   'unknown';
+  console.log('Client IP:', clientIP);
+
   try {
-    // Log the request method and headers
-    console.log('Request method:', req.method);
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
-
-    // Only allow POST requests
-    if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Log environment variables (without sensitive values)
+    // Check environment variables presence
     console.log('Environment variables present:', {
       hasResendKey: !!RESEND_API_KEY,
       hasFromEmail: !!FROM_EMAIL,
@@ -365,38 +397,38 @@ serve(async (req: Request) => {
       hasServiceKey: !!SUPABASE_SERVICE_ROLE_KEY
     });
 
-    // Add near the beginning of your request handler
-    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';
-    console.log('Client IP:', clientIP);
+    // Implement rate limiting
+    const now = new Date();
+    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-    // Check if rate limited
-    const { data: rateLimit } = await supabase
+    // Check if IP has made requests in the last hour
+    const { data: rateLimit, error: rateLimitError } = await supabase
       .from('rate_limits')
       .select('*')
       .eq('ip', clientIP)
       .single();
 
-    const now = new Date();
-    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    if (rateLimitError && rateLimitError.code !== 'PGRST116') {
+      console.error('Rate limit check error:', rateLimitError);
+    }
 
     if (rateLimit) {
-      // Reset count if last attempt was more than an hour ago
+      // If last attempt was more than an hour ago, reset count
       if (new Date(rateLimit.last_attempt) < hourAgo) {
         await supabase
           .from('rate_limits')
-          .update({ count: 1, last_attempt: now.toISOString() })
+          .update({ 
+            count: 1,
+            last_attempt: now.toISOString() 
+          })
           .eq('ip', clientIP);
-      } 
-      // Otherwise increment and check limit
-      else {
-        // If already at or over limit
-        if (rateLimit.count >= 5) { // 5 attempts per hour
-          return new Response(
-            JSON.stringify({ error: 'Too many requests. Please try again later.' }),
-            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-        
+      } else if (rateLimit.count >= 10) {
+        // Rate limit exceeded
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
         // Increment count
         await supabase
           .from('rate_limits')
@@ -435,45 +467,119 @@ serve(async (req: Request) => {
 
     const { firstName, email, projectId, category, gdprConsent } = result.data;
 
-    // Check if email already exists for this project
-    const { data: existingEmails, error: selectError } = await supabase
-      .from('emails')
-      .select('id')
-      .eq('email', email)
-      .eq('project_id', projectId)
-      .limit(1);
+    // First, check if user exists or create them
+    let userId;
+    try {
+      // Check if user exists
+      const { data: existingUser, error: userSelectError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .single();
 
-    if (selectError) {
-      console.error('Database select error:', selectError);
-      throw new Error('Database error while checking existing email');
+      if (userSelectError && userSelectError.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('User lookup error:', userSelectError);
+        throw new Error('Database error while checking existing user');
+      }
+
+      if (existingUser) {
+        userId = existingUser.id;
+        
+        // Update user's consent if they've given it
+        if (gdprConsent) {
+          await supabase
+            .from('users')
+            .update({ 
+              global_consent: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+        }
+      } else {
+        // Create new user
+        const { data: newUser, error: userInsertError } = await supabase
+          .from('users')
+          .insert({
+            email,
+            first_name: firstName,
+            global_consent: gdprConsent,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select('id')
+          .single();
+          
+        if (userInsertError) {
+          console.error('User creation error:', userInsertError);
+          throw new Error('Failed to create user record');
+        }
+        
+        userId = newUser.id;
+      }
+
+      // Get project reference
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('project_id', projectId)
+        .single();
+
+      if (projectError) {
+        console.error('Project lookup error:', projectError);
+        throw new Error('Failed to get project reference');
+      }
+
+      // Check if email already exists for this project
+      const { data: existingEmails, error: selectError } = await supabase
+        .from('emails')
+        .select('id')
+        .eq('email', email)
+        .eq('project_id', projectId)
+        .limit(1);
+
+      if (selectError) {
+        console.error('Database select error:', selectError);
+        throw new Error('Database error while checking existing email');
+      }
+
+      // If email already exists for this project, just proceed to sending the email
+      // without trying to insert a new record
+      if (existingEmails && existingEmails.length > 0) {
+        console.log('Email already exists for this project, skipping insertion');
+      } else {
+        // Insert new email record
+        const { error: insertError } = await supabase
+          .from('emails')
+          .insert({
+            first_name: firstName,
+            email,
+            project_id: projectId,
+            category,
+            created_at: new Date().toISOString(),
+            confirmed: gdprConsent,
+            user_id: userId,
+            project_ref: project.id
+          });
+
+        if (insertError) {
+          console.error('Database insertion error:', insertError);
+          
+          // If it's a unique constraint violation, handle it gracefully
+          if (insertError.code === '23505') {
+            console.log('Duplicate email detected, continuing with email sending');
+          } else {
+            throw new Error('Failed to store email');
+          }
+        } else {
+          // Log successful insertion
+          console.log('Successfully inserted email:', { email, projectId, category });
+        }
+      }
+      
+    } catch (dbError) {
+      console.error('Database operation error:', dbError);
+      throw new Error('Failed to process database operations');
     }
-
-    if (existingEmails && existingEmails.length > 0) {
-      return new Response(
-        JSON.stringify({ error: 'You are already subscribed' }),
-        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Insert email into database
-    const { error: insertError } = await supabase
-      .from('emails')
-      .insert({
-        first_name: firstName,
-        email,
-        project_id: projectId,
-        category,
-        created_at: new Date().toISOString(),
-        confirmed: gdprConsent // Set confirmed based on GDPR consent
-      });
-
-    if (insertError) {
-      console.error('Database insertion error:', insertError);
-      throw new Error('Failed to store email');
-    }
-
-    // Log successful insertion
-    console.log('Successfully inserted email:', { email, projectId, category });
 
     // Get project configuration
     const projectConfig = await getProjectConfig(projectId);
@@ -487,7 +593,9 @@ serve(async (req: Request) => {
 
     // Send confirmation email
     try {
+      console.log('About to send confirmation email to:', email);
       const emailData = await sendEmail(email, subject, htmlContent);
+      console.log('Email sending response:', emailData);
       
       // Log successful email
       await supabase
@@ -506,15 +614,9 @@ serve(async (req: Request) => {
           created_at: new Date().toISOString()
         });
 
-      // Update email record with project reference
-      await supabase
-        .from('emails')
-        .update({ project_ref: projectConfig.id })
-        .eq('email', email)
-        .eq('project_id', projectId);
-
     } catch (emailError) {
       console.error('Failed to send confirmation email:', emailError);
+      console.error('Error details:', JSON.stringify(emailError, null, 2));
       
       // Log the email error
       await supabase
@@ -525,30 +627,12 @@ serve(async (req: Request) => {
             email,
             project_id: projectId,
             category,
-            error: JSON.stringify(emailError),
+            error: emailError instanceof Error ? emailError.message : JSON.stringify(emailError),
+            error_stack: emailError instanceof Error ? emailError.stack : undefined,
             project_name: projectConfig.name
           },
           status: 'error',
           created_at: new Date().toISOString()
-        });
-    }
-
-    // After inserting email record
-    if (gdprConsent) {
-      // Upsert to users table with global consent
-      await supabase
-        .from('users')
-        .upsert({
-          email,
-          first_name: firstName,
-          global_consent: true,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'email',
-          update: {
-            global_consent: true,
-            updated_at: new Date().toISOString()
-          }
         });
     }
 

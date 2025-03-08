@@ -1,9 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+// Import shadcn components
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Project configurations
 const projectConfig = {
@@ -40,11 +48,11 @@ const projectConfig = {
     category: "waitlist",
   },
   newsletter: {
-    title: "Stay Updated",
-    subtitle: "Join My Newsletter",
-    description: "Subscribe to get updates on my latest projects, insights, and more.",
+    title: "Subscribe to Newsletter",
+    subtitle: "Stay Updated",
+    description: "Get the latest updates, tips, and insights delivered straight to your inbox.",
     buttonText: "Subscribe",
-    successMessage: "You're subscribed! Check your email for confirmation.",
+    successMessage: "Thanks for subscribing! Check your inbox for a confirmation.",
     category: "newsletter",
   }
 } as const;
@@ -113,11 +121,25 @@ export default function WaitlistForm({
     handleSubmit,
     reset,
     formState: { errors },
+    setValue,
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      firstName: "",
+      email: "",
+      gdprConsent: false,
+      honeypot: "",
+    },
   });
 
   const onSubmit = async (data: FormValues) => {
+    // Don't submit if honeypot is filled (bot detection)
+    if (data.honeypot) {
+      // Pretend success but don't actually submit
+      setIsSuccess(true);
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -133,9 +155,9 @@ export default function WaitlistForm({
           email: data.email,
           projectId,
           category: config.category,
+          gdprConsent: data.gdprConsent,
           honeypot: data.honeypot, // Send honeypot field
           timestamp: formTimestamp, // Send timestamp for bot detection
-          gdprConsent: data.gdprConsent // Send GDPR consent status
         }),
       });
 
@@ -147,377 +169,123 @@ export default function WaitlistForm({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to submit email');
+        throw new Error(result.error || 'Failed to submit. Please try again.');
       }
 
       setSubmittedEmail(data.email);
       setIsSuccess(true);
       reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Handle checkbox change for shadcn Checkbox component
+  const handleCheckboxChange = (checked: boolean) => {
+    setValue("gdprConsent", checked, { shouldValidate: true });
+  };
+
   return (
-    <div className="waitlist-form-container">
+    <Card className="w-full max-w-md mx-auto">
       {showHeader && (
-        <div className="waitlist-header">
-          <h2 className="waitlist-title">{config.title}</h2>
-          <h3 className="waitlist-subtitle">{config.subtitle}</h3>
-          <p className="waitlist-description">{config.description}</p>
-        </div>
+        <CardHeader>
+          <CardTitle>{config.title}</CardTitle>
+          <CardDescription>{config.subtitle}</CardDescription>
+        </CardHeader>
       )}
 
-      {isSuccess && (
-        <div className="waitlist-modal-overlay">
-          <div className="waitlist-modal">
-            <div className="waitlist-modal-icon">
-              <svg
-                className="waitlist-check-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+      <CardContent>
+        {isSuccess ? (
+          <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+            <AlertDescription className="text-green-800 dark:text-green-300">
+              {submittedEmail ? `Thank you! ${config.successMessage} We've sent a confirmation to ${submittedEmail}.` : config.successMessage}
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName" className={errors.firstName ? "text-destructive" : ""}>
+                First Name
+              </Label>
+              <Input
+                id="firstName"
+                type="text"
+                {...register("firstName")}
+                placeholder="Your first name"
+                className={errors.firstName ? "border-destructive" : ""}
+              />
+              {errors.firstName && (
+                <p className="text-sm text-destructive">{errors.firstName.message}</p>
+              )}
             </div>
-            
-            <h3 className="waitlist-modal-title">
-              {config.category === 'github' 
-                ? "You're in! GitHub access granted!" 
-                : config.category === 'newsletter'
-                  ? "You're subscribed!"
-                  : "We've added you to our waiting list!"}
-            </h3>
-            
-            <p className="waitlist-modal-message">
-              {config.successMessage}
-            </p>
-            
-            <p className="waitlist-modal-email">
-              {config.category === 'github'
-                ? `Check your email for the GitHub access link!`
-                : config.category === 'newsletter'
-                  ? `We'll send updates to`
-                  : `We'll let you know when we're ready at`} <span className="waitlist-email-highlight">{submittedEmail}</span>
-            </p>
-            
-            <button
-              onClick={() => setIsSuccess(false)}
-              className="waitlist-modal-button"
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className={errors.email ? "text-destructive" : ""}>
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                {...register("email")}
+                placeholder="your@email.com"
+                className={errors.email ? "border-destructive" : ""}
+              />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email.message}</p>
+              )}
+            </div>
+
+            {/* Honeypot field - hidden from users, used for bot detection */}
+            <div className="hidden" aria-hidden="true">
+              <Input
+                type="text"
+                {...register("honeypot")}
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="flex items-start space-x-2 pt-2">
+              <Checkbox
+                id="gdprConsent"
+                onCheckedChange={handleCheckboxChange}
+                className={errors.gdprConsent ? "border-destructive" : ""}
+              />
+              <div className="grid gap-1.5 leading-none">
+                <Label
+                  htmlFor="gdprConsent"
+                  className={`text-sm font-normal ${errors.gdprConsent ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  I agree to receive emails about this project and understand I can unsubscribe at any time.
+                </Label>
+                {errors.gdprConsent && (
+                  <p className="text-sm text-destructive">{errors.gdprConsent.message}</p>
+                )}
+              </div>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full"
             >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit(onSubmit)} className="waitlist-form">
-        <div className="waitlist-input-container">
-          <input
-            id="firstName"
-            type="text"
-            placeholder="Enter your first name"
-            {...register('firstName')}
-            className="waitlist-input"
-          />
-          {errors.firstName && (
-            <p className="waitlist-error">{errors.firstName.message}</p>
-          )}
-        </div>
+              {isSubmitting ? "Submitting..." : config.buttonText}
+            </Button>
 
-        <div className="waitlist-input-container">
-          <input
-            id="email"
-            type="email"
-            placeholder="Enter your email"
-            {...register('email')}
-            className="waitlist-input"
-          />
-          {errors.email && (
-            <p className="waitlist-error">{errors.email.message}</p>
-          )}
-        </div>
-        
-        <div className="waitlist-checkbox-container">
-          <label className="waitlist-checkbox-label">
-            <input
-              type="checkbox"
-              {...register('gdprConsent')}
-              className="waitlist-checkbox"
-            />
-            <span className="waitlist-checkbox-text">
-              I agree to the <a href="https://mruud.com/terms" target="_blank" rel="noopener noreferrer" className="waitlist-link">Terms</a> and <a href="https://mruud.com/privacy" target="_blank" rel="noopener noreferrer" className="waitlist-link">Privacy Policy</a>
-            </span>
-          </label>
-          {errors.gdprConsent && (
-            <p className="waitlist-error">{errors.gdprConsent.message}</p>
-          )}
-        </div>
-        
-        {/* Honeypot field - hidden from real users but bots will fill it */}
-        <div className="waitlist-honeypot">
-          <input
-            id="honeypot"
-            type="text"
-            tabIndex={-1}
-            {...register('honeypot')}
-            autoComplete="off"
-          />
-        </div>
-        
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="waitlist-button"
-        >
-          {isSubmitting ? 'Submitting...' : config.buttonText}
-        </button>
-        
-        {error && (
-          <p className="waitlist-error">{error}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              We respect your privacy and will never share your information.
+            </p>
+          </form>
         )}
-      </form>
-
-      <style jsx>{`
-        .waitlist-form-container {
-          width: 100%;
-          max-width: 400px;
-          font-family: -apple-system, BlinkMacSystemFont, &apos;Segoe UI&apos;, Roboto, Oxygen, Ubuntu, Cantarell, &apos;Open Sans&apos;, &apos;Helvetica Neue&apos;, sans-serif;
-        }
-
-        .waitlist-form {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .waitlist-input-container {
-          width: 100%;
-        }
-
-        .waitlist-input {
-          width: 100%;
-          padding: 12px 16px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 4px;
-          background-color: rgba(255, 255, 255, 0.05);
-          color: white;
-          font-size: 16px;
-          transition: all 0.2s ease;
-        }
-
-        .waitlist-input:focus {
-          outline: none;
-          border-color: rgba(255, 255, 255, 0.3);
-          background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .waitlist-input::placeholder {
-          color: rgba(255, 255, 255, 0.5);
-        }
-
-        .waitlist-honeypot {
-          opacity: 0;
-          position: absolute;
-          top: 0;
-          left: 0;
-          height: 0;
-          width: 0;
-          z-index: -1;
-          pointer-events: none;
-        }
-
-        .waitlist-button {
-          width: 100%;
-          padding: 12px 16px;
-          background-color: white;
-          color: black;
-          border: none;
-          border-radius: 4px;
-          font-size: 16px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .waitlist-button:hover {
-          background-color: rgba(255, 255, 255, 0.9);
-        }
-
-        .waitlist-button:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        .waitlist-error {
-          margin-top: 8px;
-          color: #ff6b6b;
-          font-size: 14px;
-        }
-
-        .waitlist-header {
-          text-align: center;
-          margin-bottom: 24px;
-        }
-
-        .waitlist-title {
-          font-size: 24px;
-          font-weight: 700;
-          color: white;
-          margin-bottom: 8px;
-        }
-
-        .waitlist-subtitle {
-          font-size: 32px;
-          font-weight: 700;
-          color: white;
-          margin-bottom: 12px;
-          background: linear-gradient(to right, #ec4899, #8b5cf6);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .waitlist-description {
-          font-size: 16px;
-          color: rgba(255, 255, 255, 0.8);
-          margin-bottom: 24px;
-        }
-
-        .waitlist-modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: rgba(0, 0, 0, 0.75);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          animation: fadeIn 0.3s ease;
-        }
-
-        .waitlist-modal {
-          background-color: #1a1a1a;
-          border-radius: 12px;
-          padding: 32px;
-          width: 90%;
-          max-width: 400px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-          animation: slideUp 0.4s ease;
-        }
-
-        .waitlist-modal-icon {
-          width: 48px;
-          height: 48px;
-          background-color: rgba(52, 211, 153, 0.2);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 24px;
-        }
-
-        .waitlist-check-icon {
-          width: 24px;
-          height: 24px;
-          color: #34D399;
-        }
-
-        .waitlist-modal-title {
-          font-size: 20px;
-          font-weight: 600;
-          color: white;
-          text-align: center;
-          margin-bottom: 12px;
-        }
-
-        .waitlist-modal-message {
-          font-size: 16px;
-          color: rgba(255, 255, 255, 0.8);
-          text-align: center;
-          margin-bottom: 16px;
-        }
-
-        .waitlist-modal-email {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.6);
-          text-align: center;
-          margin-bottom: 24px;
-        }
-
-        .waitlist-email-highlight {
-          font-weight: 500;
-          color: rgba(255, 255, 255, 0.9);
-        }
-
-        .waitlist-modal-button {
-          width: 100%;
-          padding: 12px 16px;
-          background-color: #1f1f1f;
-          color: white;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 4px;
-          font-size: 16px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .waitlist-modal-button:hover {
-          background-color: #2a2a2a;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-
-        .waitlist-checkbox-container {
-          margin: 16px 0;
-        }
-
-        .waitlist-checkbox-label {
-          display: flex;
-          align-items: flex-start;
-          gap: 8px;
-          cursor: pointer;
-        }
-
-        .waitlist-checkbox {
-          margin-top: 4px;
-          cursor: pointer;
-        }
-
-        .waitlist-checkbox-text {
-          font-size: 14px;
-          color: rgba(255, 255, 255, 0.8);
-          line-height: 1.4;
-        }
-
-        .waitlist-link {
-          color: white;
-          text-decoration: underline;
-          transition: opacity 0.2s ease;
-        }
-
-        .waitlist-link:hover {
-          opacity: 0.8;
-        }
-      `}</style>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
