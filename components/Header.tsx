@@ -30,6 +30,12 @@ export default function Header() {
             Templates
           </Link>
           <Link 
+            href="/docs" 
+            className="text-zinc-300 hover:text-white transition-colors"
+          >
+            Docs
+          </Link>
+          <Link 
             href="/marketing" 
             className="text-zinc-300 hover:text-white transition-colors"
           >
