@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Email Capture System",
-  description: "A centralized email collection service for all your projects",
+  title: "MruudMail | Email Marketing & Component Library",
+  description: "Email marketing tools and reusable components for developers and creators",
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={`${inter.className} bg-black text-white`}>{children}</body>
     </html>
   );
 }

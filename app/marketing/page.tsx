@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import Link from 'next/link';
+import Header from '@/components/Header';
 
 const emailSchema = z.object({
   subject: z.string().min(1, 'Subject is required'),
@@ -56,12 +56,8 @@ export default function MarketingPage() {
   // Watch form values for live preview
   const formValues = watch();
 
-  // Generate preview automatically whenever form values change
-  useEffect(() => {
-    generatePreview();
-  }, [formValues]);
-
-  const generatePreview = () => {
+  // Define generatePreview with useCallback to memoize it
+  const generatePreview = useCallback(() => {
     const { subject, previewText, title, content, ctaText, ctaUrl } = formValues;
     
     const html = `
@@ -119,7 +115,12 @@ export default function MarketingPage() {
     `;
     
     setPreviewHtml(html);
-  };
+  }, [formValues]);
+
+  // Generate preview automatically whenever form values change
+  useEffect(() => {
+    generatePreview();
+  }, [generatePreview]);
 
   const onSubmit = async (data: EmailFormValues) => {
     setIsLoading(true);
@@ -182,11 +183,9 @@ export default function MarketingPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      <Header />
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Marketing Email Composer</h1>
-          <Link href="/" className="text-blue-400 hover:text-blue-300">Back to Home</Link>
-        </div>
+        <h1 className="text-3xl font-bold mb-6">Marketing Email Composer</h1>
         
         <div className="flex flex-col md:flex-row gap-6">
           {/* Form Section */}
