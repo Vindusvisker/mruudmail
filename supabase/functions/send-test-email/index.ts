@@ -6,8 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Hardcoded fallback email
-const FALLBACK_EMAIL = "test@example.com";
+// Fallback email from environment
+const FALLBACK_EMAIL = Deno.env.get('TEST_EMAIL') || "";
 
 serve(async (req) => {
   // Handle CORS preflight requests

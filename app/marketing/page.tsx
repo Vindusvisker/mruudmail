@@ -128,8 +128,11 @@ export default function MarketingPage() {
     setResult(null);
 
     try {
-      // Get the Supabase URL from environment or use the default
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-project.supabase.co';
+      // Get the Supabase URL from environment
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('NEXT_PUBLIC_SUPABASE_URL is not configured. Please set it in your environment variables.');
+      }
       
       // Get the service role key from sessionStorage (not localStorage)
       const serviceRoleKey = sessionStorage.getItem('supabaseServiceRoleKey');

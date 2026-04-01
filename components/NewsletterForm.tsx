@@ -47,7 +47,7 @@ interface NewsletterFormProps {
 
 export default function NewsletterForm({
   customConfig,
-  supabaseUrl = 'https://your-project.supabase.co',
+  supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
   showHeader = false,
   dark = true,
 }: NewsletterFormProps) {

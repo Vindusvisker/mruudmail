@@ -60,6 +60,30 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 Create a `.env.local` file with the following variables:
 
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+RESEND_API_KEY=your_resend_api_key
+```
+
+For Supabase Edge Functions, set these as secrets:
+
+```bash
+supabase secrets set RESEND_API_KEY=your_resend_api_key
+supabase secrets set TEST_EMAIL=your_test_email@example.com
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Your Supabase anonymous/public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (can also be entered in the UI for the marketing email feature) |
+| `RESEND_API_KEY` | Yes | API key from [Resend](https://resend.com) for sending emails |
+| `TEST_EMAIL` | No | Fallback recipient for test emails (Edge Function secret) |
+
+**Important:** Never commit real values for these variables. The app will fail with a clear error if required variables are missing.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
@@ -74,12 +98,3 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-RESEND_API_KEY=your_resend_api_key
-
-Note: The service role key is only used by the Supabase Edge Functions and can be entered manually in the UI for the marketing email feature.
-
-
